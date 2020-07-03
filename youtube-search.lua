@@ -1145,6 +1145,26 @@ NumberInputter.validators = {
   }
 }
 
+-- Returns a string of UTF-8 text from the clipboard (or the primary selection)
+function NumberInputter:get_clipboard(clip)
+  local res = utils.subprocess({
+    args = { 'xclip', '-selection', clip and 'clipboard' or 'primary', '-out' },
+    playback_only = false,
+  })
+  if not res.error then
+    return res.stdout
+  end
+  return ''
+end
+
+-- Paste text from the window-system's clipboard. 'clip' determines whether the
+-- clipboard or the primary selection buffer is used (on X11 only.)
+function NumberInputter:paste(clip)
+  local text = self:get_clipboard(clip)
+  text = text:gsub('\n', '')
+  self:_append(text)
+end
+
 function NumberInputter.new()
   local self = setmetatable({}, NumberInputter)
 
@@ -1167,6 +1187,7 @@ function NumberInputter.new()
     "ENTER", "ESC", "TAB",
     "BS", "DEL",
     "LEFT", "RIGHT", "HOME", "END",
+    "ctrl+v",
 
     -- Extra input characters
     "SPACE", "SHARP",
@@ -1350,6 +1371,9 @@ function NumberInputter:_on_key( key )
   elseif key == "HOME" then
     self.cursor = self.current_value:len() + 1
   elseif key == "END" then
+    self.cursor = 1
+  elseif key == "ctrl+v" then
+    self:paste(true)
     self.cursor = 1
 
   elseif self._input_characters[key] then
